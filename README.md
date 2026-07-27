@@ -47,6 +47,9 @@ to the script rather than consuming them itself.
 Only `generate` needs an API key (`ANTHROPIC_API_KEY`) — `scan` and `check` are
 fully deterministic and run without one.
 
+If you're extending the tool, `CLAUDE.md` has the current project context and
+`docs/claude-code-kickoff-prompt.md` has the prompt used to start implementation.
+
 ## How it works
 
 1. **Fingerprint** — detect the stack from `package.json` / `pyproject.toml` /
@@ -93,12 +96,6 @@ Each scan pass has tests against small fixture repos in `test-fixtures/`
 (a plain project, a monorepo, and a project with a deliberately stale
 `CLAUDE.md`) rather than against real-world repos — so tests stay fast,
 deterministic, and don't depend on anything outside this repository.
-
-## Status
-
-Early scaffold — see `docs/claude-code-kickoff-prompt.md` for the prompt used
-to start implementation with Claude Code, and `CLAUDE.md` for the current
-project context.
 
 ## License
 
