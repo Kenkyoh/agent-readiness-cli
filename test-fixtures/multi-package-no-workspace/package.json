@@ -1,0 +1,11 @@
+{
+  "name": "multi-package-no-workspace-fixture",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "screenshots": "node scripts/take-screenshots.mjs"
+  }
+}

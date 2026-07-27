@@ -1,0 +1,7 @@
+{
+  "name": "fake-package-inside-a-fixture",
+  "version": "1.0.0",
+  "scripts": {
+    "lint": "eslint ."
+  }
+}
