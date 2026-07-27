@@ -4,6 +4,10 @@ Scans a repository and tells you how ready it is for an AI coding agent
 (Claude Code, Cursor, etc.) to work in it — then generates or updates the
 `CLAUDE.md` / `AGENTS.md` context file for you.
 
+> **Status:** not yet published to npm — the `npx` commands below are the
+> intended interface, not a working one. To use it today, clone the repo and
+> run it locally (see [Local development](#local-development)).
+
 ## Why
 
 AI coding agents work best when a repo has a short context file explaining
@@ -22,6 +26,26 @@ npx agent-readiness generate --force  # replace the existing file
 npx agent-readiness check         # CI mode: fail if a documented command is stale
 npx agent-readiness check --strict  # also fail on warnings
 ```
+
+## Local development
+
+The package isn't published yet, so run it from a clone. `npm run dev` executes
+`src/index.ts` directly through tsx — no build step.
+
+```bash
+npm install
+npm run dev -- scan                  # analyze this repo, print a report
+npm run dev -- scan ../other-repo    # or point it somewhere else
+npm run dev -- generate --diff       # preview a drafted CLAUDE.md
+npm run dev -- check                 # exit non-zero if a documented command is stale
+npm test                             # vitest
+```
+
+Note the `--` before the subcommand: it tells npm to pass the arguments through
+to the script rather than consuming them itself.
+
+Only `generate` needs an API key (`ANTHROPIC_API_KEY`) — `scan` and `check` are
+fully deterministic and run without one.
 
 ## How it works
 
