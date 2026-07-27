@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # package-lock.json is committed, so ci gives a reproducible install.
+      - run: npm ci
+
+      - run: npm test
+
+      # Catches type errors the test suite alone would not.
+      - run: npm run build
+
+      # The tool checking its own repo. No API key needed — check runs only
+      # the deterministic passes. Deliberately not --strict: this repo's one
+      # flag is info-severity (no linter configured), and failing CI over it
+      # would prejudge a decision that hasn't been made.
+      - run: npm run dev -- check
