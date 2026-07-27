@@ -1,0 +1,7 @@
+{
+  "name": "stale-docs-fixture",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "tsc"
+  }
+}
