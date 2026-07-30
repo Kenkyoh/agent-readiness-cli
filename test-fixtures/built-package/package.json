@@ -1,0 +1,12 @@
+{
+  "name": "built-package-fixture",
+  "version": "1.0.0",
+  "main": "build/index.js",
+  "bin": {
+    "built-package": "./build/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node build/missing.js"
+  }
+}

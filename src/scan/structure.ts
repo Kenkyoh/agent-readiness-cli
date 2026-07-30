@@ -158,17 +158,25 @@ async function findEntryPoints(
 ): Promise<string[]> {
   const pkgAbs = path.join(repoRoot, pkgDir);
   const pkg = await readJson(path.join(pkgAbs, "package.json"));
-  const declared = new Set<string>();
+
+  /**
+   * Manifest fields name the package's own entry point, and for a published
+   * package that is almost always built output (`main: "dist/index.js"`).
+   * Those are kept even inside an otherwise-ignored directory.
+   */
+  const manifestRefs = new Set<string>();
+  /** Script and HTML references, where a built path is an artifact, not an entry. */
+  const sourceRefs = new Set<string>();
 
   // (a) explicit manifest fields
   if (pkg) {
     for (const field of [pkg.main, pkg.module]) {
-      if (typeof field === "string") declared.add(field);
+      if (typeof field === "string") manifestRefs.add(field);
     }
-    if (typeof pkg.bin === "string") declared.add(pkg.bin);
+    if (typeof pkg.bin === "string") manifestRefs.add(pkg.bin);
     else if (pkg.bin && typeof pkg.bin === "object") {
       for (const target of Object.values(pkg.bin)) {
-        if (typeof target === "string") declared.add(target);
+        if (typeof target === "string") manifestRefs.add(target);
       }
     }
 
@@ -177,7 +185,7 @@ async function findEntryPoints(
       if (typeof command !== "string" || NON_ENTRY_SCRIPT.test(name)) continue;
       for (const token of command.split(/\s+/)) {
         const cleaned = token.replace(/^['"]|['"]$/g, "");
-        if (SCRIPT_PATH.test(cleaned) && !cleaned.startsWith("-")) declared.add(cleaned);
+        if (SCRIPT_PATH.test(cleaned) && !cleaned.startsWith("-")) sourceRefs.add(cleaned);
       }
     }
   }
@@ -186,19 +194,31 @@ async function findEntryPoints(
   const html = await readText(path.join(pkgAbs, "index.html"));
   if (html) {
     const match = /<script[^>]*\btype=["']module["'][^>]*\bsrc=["']([^"']+)["']/i.exec(html);
-    if (match) declared.add(match[1]);
+    if (match) sourceRefs.add(match[1]);
   }
 
   const resolved: string[] = [];
-  for (const ref of declared) {
-    const rel = join(pkgDir, ref.replace(/^\.?\//, ""));
-    // Keep only what really exists: an unbuilt `dist/server.js` from a
-    // `start` script is a build artifact, not a source entry point.
-    if (!isIgnored(rel) && (await fileExists(path.join(repoRoot, rel)))) {
-      resolved.push(rel);
+  for (const [refs, allowBuilt] of [
+    [manifestRefs, true],
+    [sourceRefs, false],
+  ] as const) {
+    for (const ref of refs) {
+      const rel = join(pkgDir, ref.replace(/^\.?\//, ""));
+      // Existence is the shared test: an unbuilt `dist/server.js` named by a
+      // `start` script is not an entry point in a repo nobody has built.
+      if (!allowBuilt && isIgnored(rel)) continue;
+      if (await fileExists(path.join(repoRoot, rel))) resolved.push(rel);
     }
   }
-  if (resolved.length) return resolved;
+  if (resolved.length) {
+    const unique = [...new Set(resolved)];
+    // A built artifact and the source it was compiled from are the same
+    // program, and the source is the useful answer for someone working in the
+    // repo. Report built output only when it is all we have — the published
+    // package whose only declared entry is `main: "dist/index.js"`.
+    const fromSource = unique.filter((rel) => !isIgnored(rel));
+    return fromSource.length ? fromSource : unique;
+  }
 
   // (d) fallback: convention-named files whose nearest package is this one
   return conventionFiles.filter((file) => nearestPackage(file, packages) === pkgDir);
