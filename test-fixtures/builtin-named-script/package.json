@@ -1,0 +1,7 @@
+{
+  "name": "builtin-named-script-fixture",
+  "version": "1.0.0",
+  "scripts": {
+    "version": "genversion src/version.ts"
+  }
+}

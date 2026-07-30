@@ -102,8 +102,14 @@ function scriptNameOf(command: string): string | null {
 
   // `npm run build` names the script explicitly; `npm test` / `yarn build`
   // name it directly as the subcommand.
-  const subcommand = rest[0] === "run" ? rest[1] : rest[0];
-  if (!subcommand || BUILTIN_SUBCOMMANDS.has(subcommand)) return null;
+  const explicitRun = rest[0] === "run";
+  const subcommand = explicitRun ? rest[1] : rest[0];
+  if (!subcommand) return null;
+
+  // Only the bare form is ambiguous: `npm publish` is the built-in command,
+  // but `npm run publish` can only mean a script by that name — and
+  // `publish`, `version`, and `pack` are all plausible script names.
+  if (!explicitRun && BUILTIN_SUBCOMMANDS.has(subcommand)) return null;
 
   return subcommand;
 }

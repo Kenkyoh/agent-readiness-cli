@@ -21,6 +21,22 @@ describe("scanExistingDocs", () => {
     expect(diff.staleClaims.length).toBeGreaterThan(0);
   });
 
+  it("checks `npm run <name>` even when the name is an npm subcommand", async () => {
+    const root = path.join(FIXTURES, "builtin-named-script");
+    const structure = await scanStructure(root);
+    const fingerprints = await Promise.all(
+      structure.packages.map((pkg) => scanFingerprint(path.join(root, pkg), pkg)),
+    );
+    const diff = await scanExistingDocs(root, fingerprints, structure);
+
+    // The explicit `run` form can only mean a script, so a missing one is stale.
+    expect(diff.staleClaims).toContain("npm run publish");
+    // The bare form is npm's own command — nothing we can verify.
+    expect(diff.staleClaims).not.toContain("npm publish");
+    // And a declared script by the same name is not stale.
+    expect(diff.staleClaims).not.toContain("npm run version");
+  });
+
   it("does not flag a claim that a nested package declares", async () => {
     const root = path.join(FIXTURES, "multi-package-no-workspace");
     const structure = await scanStructure(root);
