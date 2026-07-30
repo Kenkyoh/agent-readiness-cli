@@ -98,14 +98,47 @@ describe("computeAmbiguityFlags", () => {
     });
   });
 
-  describe("monorepo fixture", () => {
-    it("reports per-package flags for every package", async () => {
+  describe("declared workspace", () => {
+    it("does not flag members for tooling that lives at the workspace root", async () => {
+      // Root holds the lockfile and the test script; the members hold
+      // neither. That is the correct layout for a workspace, so neither rule
+      // should fire anywhere.
+      const flags = await flagsFor("workspace-root-tooling");
+
+      expect(matching(flags, /lockfile/i)).toHaveLength(0);
+      expect(matching(flags, /test script/i)).toHaveLength(0);
+    });
+
+    it("reports a missing lockfile once, against the workspace root", async () => {
+      // The monorepo fixture declares workspaces but has no lockfile at all.
       const flags = await flagsFor("monorepo");
-      // Root declares no scripts; packages/a and packages/b each declare
-      // "test". So exactly one missing-test-script warning, for the root.
-      const tests = matching(flags, /test script/i);
-      expect(tests).toHaveLength(1);
-      expect(tests[0].message).toContain(".");
+      const lockfile = matching(flags, /lockfile/i);
+
+      expect(lockfile).toHaveLength(1);
+      expect(lockfile[0].message).toContain("workspace root");
+      expect(lockfile[0].message).not.toContain("packages/a");
+    });
+
+    it("stays quiet on tests when any package in the workspace has them", async () => {
+      // Root declares no test script, but packages/a and packages/b both do,
+      // so there is a way to verify a change.
+      const flags = await flagsFor("monorepo");
+      expect(matching(flags, /test script/i)).toHaveLength(0);
+    });
+  });
+
+  describe("incidental multi-package repo", () => {
+    it("still evaluates both rules per package", async () => {
+      // No workspaces field: each package is installed and tested on its own,
+      // so a member missing a lockfile or tests is a real gap.
+      const flags = await flagsFor("multi-package-no-workspace");
+
+      expect(
+        matching(flags, /lockfile/i).some((f) => f.message.includes('"backend"')),
+      ).toBe(true);
+      expect(
+        matching(flags, /test script/i).some((f) => f.message.includes('"backend"')),
+      ).toBe(true);
     });
   });
 });
