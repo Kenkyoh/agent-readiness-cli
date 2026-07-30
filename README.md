@@ -54,8 +54,11 @@ If you're extending the tool, `CLAUDE.md` has the current project context and
 
 1. **Fingerprint** — detect the stack from `package.json` / `pyproject.toml` /
    `Cargo.toml` / `go.mod`, pull declared scripts (test, build, lint).
-2. **Structure** — map the folder tree, detect monorepo vs single package,
-   flag ambiguous entry points, identify generated/vendored paths to ignore.
+2. **Structure** — map the folder tree, find every package root, resolve entry
+   points, identify generated/vendored paths to ignore. A repo with a declared
+   workspace (`workspaces`, `pnpm-workspace.yaml`, `lerna.json`, Cargo
+   `[workspace]`, `go.work`) is tracked separately from one that merely happens
+   to contain several packages — the two warrant different advice.
 3. **Conventions** — read lint/formatter configs to capture style rules.
 4. **Existing docs** — parse any current CLAUDE.md/AGENTS.md and diff its
    **command claims** against the scripts steps 1–3 actually found. Scope is
@@ -65,7 +68,11 @@ If you're extending the tool, `CLAUDE.md` has the current project context and
    folder structure, conventions, or anything else — are **not** verified,
    so a doc can pass `check` and still describe the layout incorrectly.
 5. **Ambiguity flags** — rule-based checks (no lockfile, no test command,
-   multiple plausible entry points, etc.).
+   multiple plausible entry points, etc.), scoped to match how the repo is
+   actually organised: in a declared workspace the lockfile and test-script
+   checks run once for the whole repo, since a workspace installs from one
+   root lockfile and usually tests from one root script. Flagging those per
+   package would report a correctly-configured monorepo as broken.
 6. **Draft generation** — only this step calls an LLM, to turn the structured
    findings into readable prose. Steps 1–5 are deterministic, which is what
    makes `check` mode fast enough to run in CI without an API call.
@@ -92,10 +99,23 @@ stay consistent with it, is not independently verified.
 npm test
 ```
 
-Each scan pass has tests against small fixture repos in `test-fixtures/`
-(a plain project, a monorepo, and a project with a deliberately stale
-`CLAUDE.md`) rather than against real-world repos — so tests stay fast,
-deterministic, and don't depend on anything outside this repository.
+Each scan pass is tested against small fixture repos in `test-fixtures/` rather
+than against real-world projects, so tests stay fast, deterministic, and don't
+depend on anything outside this repository. Each fixture exists to pin one
+case:
+
+| Fixture | Pins |
+|---|---|
+| `simple-node` | the baseline single-package project |
+| `monorepo` | a declared workspace with no lockfile |
+| `workspace-root-tooling` | a workspace whose lockfile and tests live at the root — the case where the correct answer is silence |
+| `multi-package-no-workspace` | several packages with no `workspaces` field, plus barrel files and a tooling script that must not read as entry points |
+| `built-package` | a package whose entry point is built output (`main: "build/index.js"`) |
+| `builtin-named-script` | scripts whose names collide with npm's own subcommands |
+| `stale-docs` | a `CLAUDE.md` claiming a command the manifest doesn't declare |
+
+Several of these exist because the tool got a real repo wrong first; the
+fixture is how that stays fixed.
 
 ## License
 
